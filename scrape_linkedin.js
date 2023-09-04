@@ -1,8 +1,11 @@
 const puppeteer = require("puppeteer");
+const readline = require("readline-sync");
 require("dotenv").config();
 
 let scrape = async () => {
   const URL = "https://linkedin.com";
+
+  const linkedinUsername = readline.question("Enter your linkedin username: ");
 
   const browser = await puppeteer.launch({
     userDataDir: "./user_data",
@@ -33,10 +36,10 @@ let scrape = async () => {
     await page.waitForTimeout(5000);
     console.log("login success!");
   } catch (err) {
-    console.log("already login")
+    console.log("already login");
   }
 
-  await page.goto(`${URL}/in/umar-izzuddin/`);
+  await page.goto(`${URL}/in/${linkedinUsername}/`);
 
   console.log("go to profile success");
   await page.waitForTimeout(3000);
@@ -60,7 +63,7 @@ let scrape = async () => {
 
   console.log("getting profile experiences...");
 
-  await page.goto(`${URL}/in/umar-izzuddin/details/experience/`);
+  await page.goto(`${URL}/in/${linkedinUsername}/details/experience/`);
 
   await page.waitForTimeout(3000);
 
@@ -72,19 +75,60 @@ let scrape = async () => {
     const experienceLength = experienceElements.length;
 
     for (let i = 0; i < experienceLength; i++) {
-      const exp = {};
-      const blockContent = experienceElements[
-        i
-      ].children[0].children[0].children[1].querySelectorAll(
-        "span[aria-hidden='true']"
-      );
+      let exp = {};
 
-      exp.title = blockContent[0].textContent;
-      exp.company = blockContent[1].textContent.split("·")[0];
-      exp.position = blockContent[1].textContent.split("·")[1];
-      exp.period = blockContent[2].textContent;
+      try {
+        const title = experienceElements[
+          i
+        ].children[0].children[0].children[1].children[0].querySelectorAll(
+          "span[aria-hidden='true']"
+        );
 
-      experiences.push(exp);
+        exp.company = title[0].textContent;
+        exp.duration = title[1].textContent;
+
+        exp.positions = [];
+
+        const positionElements = experienceElements[
+          i
+        ].children[0].children[0].children[1].children[1]
+          .querySelector("ul > li")
+          .children[0].querySelectorAll("a");
+
+        for (let i = 0; i < positionElements.length; i++) {
+          if (!positionElements[i].href?.includes("company")) {
+            continue;
+          }
+          const position = {};
+          const positionTitle = positionElements[i].querySelectorAll(
+            "span[aria-hidden='true']"
+          );
+          position.title = positionTitle[0].textContent;
+          position.duration = positionTitle[1].textContent;
+          exp.positions.push(position);
+        }
+        if (exp.positions.length === 0) {
+          throw new Error("No position found");
+        }
+
+        experiences.push(exp);
+      } catch (err) {
+        exp = {};
+
+        const blockContent = experienceElements[
+          i
+        ].children[0].children[0].children[1].querySelectorAll(
+          "span[aria-hidden='true']"
+        );
+
+        exp.title = blockContent[0].textContent;
+        exp.company = blockContent[1].textContent.split("·")[0];
+        exp.position = blockContent[1].textContent.split("·")[1];
+        exp.period = blockContent[2].textContent.split("·")[0];
+        exp.duration = blockContent[2].textContent.split("·")[1];
+
+        experiences.push(exp);
+      }
     }
 
     return experiences;
@@ -101,5 +145,5 @@ let scrape = async () => {
 };
 
 scrape().then((value) => {
-  console.log(value);
+  console.log(JSON.stringify(value));
 });
