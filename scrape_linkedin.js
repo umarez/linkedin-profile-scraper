@@ -5,7 +5,7 @@ require("dotenv").config();
 let scrape = async () => {
   const URL = "https://linkedin.com";
 
-  const linkedinUsername = readline.question("Enter your linkedin username: ");
+  const linkedinUsername = readline.question("Enter linkedin username: ");
 
   const browser = await puppeteer.launch({
     userDataDir: "./user_data",
